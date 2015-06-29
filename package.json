@@ -9,6 +9,7 @@
   "main": "index.js",
   "dependencies": {
     "pg": "4.4.0",
+    "pg-native": "1.8.1",
     "mocha": "2.2.5"
   }
 }

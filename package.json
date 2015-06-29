@@ -1,0 +1,14 @@
+{
+  "name": "vectorvictor",
+  "description": "Secret",
+  "author": "Björn Harrtell",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "pg": "4.4.0",
+    "mocha": "2.2.5"
+  }
+}

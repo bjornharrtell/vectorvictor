@@ -20,8 +20,11 @@ case class GridExtent(extent: Extent, level: Int) {
   val maxy = Math.ceil(extent.height / tileSize).toInt - 1
   def rx = minx to maxx
   def ry = miny to maxy
-  def tileExtent(x:Int, y:Int) : Extent = 
-    Extent(extent.minx + (tileSize * x), extent.miny + (tileSize * y), minx + tileSize, miny + tileSize)
+  def tileExtent(x:Int, y:Int) : Extent = {
+    val minx = extent.minx + (tileSize * x)
+    val miny = extent.miny + (tileSize * y)
+    Extent(minx, miny, minx + tileSize, miny + tileSize)
+  }
 }
 
 object VectorVictor extends App with LazyLogging {
@@ -48,6 +51,7 @@ object VectorVictor extends App with LazyLogging {
     
     var funcs = for (x <- grid.rx; y <- grid.ry) yield () => {
       val bytes = fetchTile(grid.tileExtent(x,y).toBBOX);
+      
       if (bytes != null) storeTile(bytes, x, y, level)
     }
     
@@ -55,7 +59,7 @@ object VectorVictor extends App with LazyLogging {
     
     parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
     
-    parFuncs.foreach(f => f())
+    funcs.foreach(f => f())
   }
   
   def storeTile(tile: Array[Byte], x: Int, y: Int, z: Int) = {
@@ -70,19 +74,31 @@ object VectorVictor extends App with LazyLogging {
     logger.info(s"Fetching tile for " + bbox)
     
     val envelope = s"ST_MakeEnvelope(${bbox}, 3006)";
-    var sql = s"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from lantmateriet.ak_riks where geom && ${envelope}";
+    var insert = s"insert into t_vv select gid from lantmateriet.ak_riks left join t_vv on gid != t_vv.id where geom @ ${envelope}";
+    var select = s"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from lantmateriet.ak_riks left join t_vv on gid != t_vv.id where geom @ ${envelope}";
 
     var connection: java.sql.Connection = null
     var statement: java.sql.Statement = null
     var resultSet: java.sql.ResultSet = null
+ 
     try {
       connection = ds.getConnection
       statement = connection.createStatement()
-      resultSet = statement.executeQuery(sql)
+      resultSet = statement.executeQuery(select)
       resultSet.next
       resultSet.getBytes(1)
     } finally {
       resultSet.close()
+      statement.close()
+      connection.close()
+    }
+    
+    try {
+      connection = ds.getConnection
+      statement = connection.createStatement()
+      statement.executeUpdate(insert)
+      null
+    } finally {
       statement.close()
       connection.close()
     }

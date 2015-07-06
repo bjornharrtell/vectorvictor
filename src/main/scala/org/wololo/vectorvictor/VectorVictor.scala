@@ -3,15 +3,25 @@ package org.wololo.vectorvictor
 import java.io._
 import com.zaxxer.hikari._
 import resource._
-import scala.collection.parallel.mutable.ParArray
+import scala.collection.parallel._
 import com.typesafe.scalalogging.slf4j.LazyLogging
 
-case class Extent(minx:Int, miny: Int, maxx: Int, maxy: Int) {
+case class Extent(val minx: Double, miny: Double, maxx: Double, maxy: Double) {
   def width = maxx - minx
   def height = maxy - miny
-  def rx = Range(minx, maxx)
-  def rt = Range(miny, maxy)
   def toBBOX = List(minx, miny, maxx, maxy).mkString(",")
+}
+
+case class GridExtent(extent: Extent, level: Int) {
+  val tileSize = extent.height / math.pow(2, level)
+  val minx = 0
+  val miny = 0
+  val maxx = Math.ceil(extent.width / tileSize).toInt - 1
+  val maxy = Math.ceil(extent.height / tileSize).toInt - 1
+  def rx = minx to maxx
+  def ry = miny to maxy
+  def tileExtent(x:Int, y:Int) : Extent = 
+    Extent(extent.minx + (tileSize * x), extent.miny + (tileSize * y), minx + tileSize, miny + tileSize)
 }
 
 object VectorVictor extends App with LazyLogging {
@@ -20,40 +30,46 @@ object VectorVictor extends App with LazyLogging {
   
   val extent = Extent(218128, 6126002, 1083427, 7692850)
   
-  val size = 108162.3242375
-  //val size = 13520.2905296875
+  val levels = Array(
+    GridExtent(extent, 0),
+    GridExtent(extent, 2),
+    GridExtent(extent, 4)
+  )
   
-  val gridExtent = Extent(0, 0, Math.ceil(extent.width / size).toInt - 1, Math.ceil(extent.height / size).toInt - 1)
-  
-  def calcTileExtent(x:Int, y:Int) : Extent = {
-    var minx = extent.minx + Math.ceil(size * x).toInt
-    var miny = extent.miny + Math.ceil(size * y).toInt
-    var maxx = minx + size.toInt
-    var maxy = miny + size.toInt
-    Extent(minx, miny, maxx, maxy)
-  }
-  
-  def makeTiles() = {
-    var funcs = for (
-        x <- gridExtent.minx to gridExtent.maxx; y <- gridExtent.miny to gridExtent.maxy)
-      yield () => fetchTile(x, y)
+  def makeTiles(level: Int) = {
+    // TODO: should fetch tiles for increasing levels, only fetching objects that fit in bbox
+    // TODO: remember every object that has been fetched (where?!)
+    // TODO: only fetch not already fetched objects
+    // TODO: uhu.. that requies sequential processing right? no, only level to level
     
-    funcs.toParArray.foreach(f => f())
+    var grid = levels(level)
+    
+    logger.info(s"Using tilesize " + grid.tileSize)
+    
+    var funcs = for (x <- grid.rx; y <- grid.ry) yield () => {
+      val bytes = fetchTile(grid.tileExtent(x,y).toBBOX);
+      if (bytes != null) storeTile(bytes, x, y, level)
+    }
+    
+    val parFuncs = funcs.toParArray
+    
+    parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
+    
+    parFuncs.foreach(f => f())
   }
   
-  def storeTile(tile: Array[Byte], x: Int, y: Int) = {
-    val path = s"output/${y}/"
-    new File(path).mkdir
+  def storeTile(tile: Array[Byte], x: Int, y: Int, z: Int) = {
+    val path = s"output/${z}/${y}/"
+    new File(path).mkdirs()
     val fos = new FileOutputStream(path + x)
     fos.write(tile, 0, tile.length)
     fos.close
   }
   
-  def fetchTile(x: Int, y: Int) {
-    logger.info(s"Fetching tile ${x}, ${y}")
+  def fetchTile(bbox: String) : Array[Byte] = {
+    logger.info(s"Fetching tile for " + bbox)
     
-    val tileExtent = calcTileExtent(x, y);
-    val envelope = s"ST_MakeEnvelope(${tileExtent.toBBOX}, 3006)";
+    val envelope = s"ST_MakeEnvelope(${bbox}, 3006)";
     var sql = s"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from lantmateriet.ak_riks where geom && ${envelope}";
 
     var connection: java.sql.Connection = null
@@ -64,8 +80,7 @@ object VectorVictor extends App with LazyLogging {
       statement = connection.createStatement()
       resultSet = statement.executeQuery(sql)
       resultSet.next
-      val bytes = resultSet.getBytes(1)
-      if (bytes != null) storeTile(bytes, x, y)
+      resultSet.getBytes(1)
     } finally {
       resultSet.close()
       statement.close()
@@ -73,5 +88,7 @@ object VectorVictor extends App with LazyLogging {
     }
   }
   
-  makeTiles
+  makeTiles(2)
+  makeTiles(1)
+  makeTiles(0)
 }

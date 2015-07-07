@@ -45,18 +45,8 @@ object VectorVictor extends App with LazyLogging {
   val ds = new HikariDataSource(config)
   
   ConnectionPool.singleton(new DataSourceConnectionPool(ds))
-  
-  var connection: java.sql.Connection = null
-  var statement: java.sql.Statement = null
  
-  try {
-    connection = ds.getConnection
-    statement = connection.createStatement()
-    statement.executeUpdate("truncate t_vv")
-  } finally {
-    statement.close()
-    connection.close()
-  }
+  DB.autoCommit { implicit session => sql"truncate t_vv".update.apply() }
   
   val extent = Extent(200000, 6000000, 1000000, 7800000)
   
@@ -65,7 +55,7 @@ object VectorVictor extends App with LazyLogging {
   var resolutions = List[Int]()
   var zs = List[Int]()
   var z = 2
-  
+    
   def makeTiles(level: Int) = {
     logger.info("Making tiles for level " + level)
     
@@ -101,9 +91,11 @@ object VectorVictor extends App with LazyLogging {
     fos.close
   }
   
+  def sqlEnvelope(extent: Extent) = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
+  
   def fetchTile(extent: Extent) : Option[Array[Byte]] = DB.autoCommit { implicit session =>
     logger.debug(s"Fetching tile for " + extent)
-    val envelope = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
+    val envelope = sqlEnvelope(extent)
     val bytes = sql"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from (select gid, geom from lantmateriet.ak_riks left join t_vv on id = gid where geom @ ${envelope} and id is null) as q".map(rs => rs.bytes(1)).single.apply()
     sql"insert into t_vv select gid from lantmateriet.ak_riks left join t_vv on gid = id where geom @ ${envelope} and id is null".update.apply()
     bytes

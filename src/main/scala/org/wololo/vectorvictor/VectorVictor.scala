@@ -6,31 +6,38 @@ import resource._
 import scala.collection.parallel._
 import com.typesafe.scalalogging.LazyLogging
 
-case class Extent(val minx: Double, miny: Double, maxx: Double, maxy: Double) {
+case class Extent(minx: Int, miny: Int, maxx: Int, maxy: Int) {
   def width = maxx - minx
   def height = maxy - miny
   def toBBOX = List(minx, miny, maxx, maxy).mkString(",")
 }
 
-// How to find out max resolution from extent:
-// Math.ceil(Math.log2(distance))
-// How to select an extent that is divisable with resolution
-// Math.ceil(origo/resolution)*resolution
-
-
-case class GridExtent(extent: Extent, level: Int) {
-  val tileSize = extent.height / math.pow(2, level)
-  //val tileSize = 256
-  val minx = 0
-  val miny = 0
-  val maxx = Math.ceil(extent.width / tileSize).toInt - 1
-  val maxy = Math.ceil(extent.height / tileSize).toInt - 1
-  def rx = minx to maxx
-  def ry = miny to maxy
-  def tileExtent(x:Int, y:Int) : Extent = {
-    val minx = extent.minx + (tileSize * x)
-    val miny = extent.miny + (tileSize * y)
-    Extent(minx, miny, minx + tileSize, miny + tileSize)
+case class Grid(extent: Extent) extends LazyLogging {
+  logger.info("Initializing gridset from " + extent)
+  
+  val tileSize = 256
+  
+  val maxDistance = if (extent.width > extent.height) extent.width else extent.height
+  val maxResolution = (math.pow(2, math.ceil(math.log(maxDistance) / math.log(2))) / tileSize).toInt
+  logger.info("Calculated maxResolution " + maxResolution)
+  
+  val bounds = Extent(
+      (Math.ceil(extent.minx / maxResolution) * maxResolution).toInt,
+      (Math.ceil(extent.miny / maxResolution) * maxResolution).toInt,
+      (Math.ceil(extent.minx / maxResolution) * maxResolution + tileSize * maxResolution).toInt,
+      (Math.ceil(extent.miny / maxResolution) * maxResolution + tileSize * maxResolution).toInt
+  )
+  
+  logger.info("TileGrid total bounds " + bounds)
+  
+  def resolution(level: Int) = (maxResolution/math.pow(2, level)).toInt
+  def range(level: Int) = 0 to math.pow(2, level).toInt-1
+  
+  def tileExtent(x:Int, y:Int, level: Int) : Extent = {
+    val w = tileSize * resolution(level)
+    val minx = bounds.minx + w * x
+    val miny = extent.miny + w * y
+    Extent(minx, miny, minx + w, miny + w)
   }
 }
 
@@ -52,29 +59,26 @@ object VectorVictor extends App with LazyLogging {
   
   val extent = Extent(218128, 6126002, 1083427, 7692850)
   
-  val levels = Array(
-    GridExtent(extent, 0),
-    GridExtent(extent, 1),
-    GridExtent(extent, 2),
-    GridExtent(extent, 3),
-    GridExtent(extent, 4),
-    GridExtent(extent, 5),
-    GridExtent(extent, 6)
-  )
+  val grid = Grid(extent)
+  
+  var resolutions = List[Int]()
+  var zs = List[Int]()
+  var z = 2 
   
   def makeTiles(level: Int) = {
-    // TODO: should fetch tiles for increasing levels, only fetching objects that fit in bbox
-    // TODO: remember every object that has been fetched (where?!)
-    // TODO: only fetch not already fetched objects
-    // TODO: uhu.. that requies sequential processing right? no, only level to level
+    logger.info("Making tiles for level " + level)
     
-    var grid = levels(level)
+    resolutions = resolutions :+ grid.resolution(level)
+    zs = zs :+ z
     
-    logger.info(s"Using tilesize " + grid.tileSize)
-    
-    var funcs = for (x <- grid.rx; y <- grid.ry) yield () => {
-      val bytes = fetchTile(grid.tileExtent(x,y).toBBOX)
-      if (bytes != null) storeTile(bytes, x, y, level)
+    var c = 0;
+    val r = grid.range(level)
+    val funcs = for (x <- r; y <- r) yield () => {
+      val bytes = fetchTile(grid.tileExtent(x, y, level).toBBOX)
+      if (bytes != null) {
+        storeTile(bytes, x, y)
+        c += 1
+      }
     }
     
     val parFuncs = funcs.toParArray
@@ -82,9 +86,13 @@ object VectorVictor extends App with LazyLogging {
     parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
     
     parFuncs.foreach(f => f())
+    
+    z -= 1
+    
+    logger.info("Tiles stored: " + c)
   }
   
-  def storeTile(tile: Array[Byte], x: Int, y: Int, z: Int) = {
+  def storeTile(tile: Array[Byte], x: Int, y: Int) = {
     val path = s"output/${z}/${y}/"
     new File(path).mkdirs()
     val fos = new FileOutputStream(path + x)
@@ -93,7 +101,7 @@ object VectorVictor extends App with LazyLogging {
   }
   
   def fetchTile(bbox: String) : Array[Byte] = {
-    logger.info(s"Fetching tile for " + bbox)
+    logger.debug(s"Fetching tile for " + bbox)
     
     val envelope = s"ST_MakeEnvelope(${bbox}, 3006)";
     var insert = s"insert into t_vv select gid from lantmateriet.ak_riks left join t_vv on gid = id where geom @ ${envelope} and id is null";
@@ -129,11 +137,10 @@ object VectorVictor extends App with LazyLogging {
     }
   }
   
-  makeTiles(6)
-  makeTiles(5)
   makeTiles(4)
-  makeTiles(3)
   makeTiles(2)
-  makeTiles(1)
   makeTiles(0)
+  
+  logger.info("Origin: " + grid.bounds.minx + ", " + grid.bounds.miny)
+  logger.info("Resolutions: " + resolutions.reverse.toString)
 }

@@ -5,22 +5,22 @@
 	<artifactId>vectorvictor</artifactId>
 	<version>0.1.0</version>
 	<name>vectorvictor</name>
-	
+
 	<properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 
 	<dependencies>
-	  <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>2.11.7</version>
-    </dependency>
 		<dependency>
-      <groupId>com.typesafe.scala-logging</groupId>
-      <artifactId>scala-logging_2.11</artifactId>
-      <version>3.1.0</version>
-  </dependency>
+			<groupId>org.scala-lang</groupId>
+			<artifactId>scala-library</artifactId>
+			<version>2.11.7</version>
+		</dependency>
+		<dependency>
+			<groupId>com.typesafe.scala-logging</groupId>
+			<artifactId>scala-logging_2.11</artifactId>
+			<version>3.1.0</version>
+		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
@@ -32,14 +32,14 @@
 			<version>2.3.7</version>
 		</dependency>
 		<dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>9.4-1201-jdbc41</version>
-    </dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>9.4-1201-jdbc41</version>
+		</dependency>
 		<dependency>
-	    <groupId>com.jsuereth</groupId>
-	    <artifactId>scala-arm_2.11</artifactId>
-	    <version>1.4</version>
+			<groupId>org.scalikejdbc</groupId>
+			<artifactId>scalikejdbc_2.11</artifactId>
+			<version>2.2.7</version>
 		</dependency>
 	</dependencies>
 
@@ -52,27 +52,27 @@
 				<artifactId>scala-maven-plugin</artifactId>
 				<version>3.2.2</version>
 				<configuration>
-				  <scalaCompatVersion>2.11</scalaCompatVersion>
+					<scalaCompatVersion>2.11</scalaCompatVersion>
 				</configuration>
 				<executions>
-            <execution>
-                <goals>
-                    <goal>compile</goal>
-                    <goal>testCompile</goal>
-                </goals>
-            </execution>
-        </executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.6</version>
-        <configuration>
-          <archive>
-            <manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
-          </archive>
-        </configuration>
-      </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.6</version>
+				<configuration>
+					<archive>
+						<manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
+					</archive>
+				</configuration>
+			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.3</version>

@@ -2,14 +2,13 @@ package org.wololo.vectorvictor
 
 import java.io._
 import com.zaxxer.hikari._
-import resource._
 import scala.collection.parallel._
+import scalikejdbc._
 import com.typesafe.scalalogging.LazyLogging
 
 case class Extent(minx: Int, miny: Int, maxx: Int, maxy: Int) {
   def width = maxx - minx
   def height = maxy - miny
-  def toBBOX = List(minx, miny, maxx, maxy).mkString(",")
 }
 
 case class Grid(extent: Extent) extends LazyLogging {
@@ -45,6 +44,8 @@ object VectorVictor extends App with LazyLogging {
   val config = new HikariConfig("hikari.properties")
   val ds = new HikariDataSource(config)
   
+  ConnectionPool.singleton(new DataSourceConnectionPool(ds))
+  
   var connection: java.sql.Connection = null
   var statement: java.sql.Statement = null
  
@@ -74,9 +75,9 @@ object VectorVictor extends App with LazyLogging {
     var c = 0;
     val r = grid.range(level)
     val funcs = for (x <- r; y <- r) yield () => {
-      val bytes = fetchTile(grid.tileExtent(x, y, level).toBBOX)
-      if (bytes != null) {
-        storeTile(bytes, x, y)
+      val bytes = fetchTile(grid.tileExtent(x, y, level))
+      if (!bytes.isEmpty) {
+        storeTile(bytes.get, x, y)
         c += 1
       }
     }
@@ -100,41 +101,12 @@ object VectorVictor extends App with LazyLogging {
     fos.close
   }
   
-  def fetchTile(bbox: String) : Array[Byte] = {
-    logger.debug(s"Fetching tile for " + bbox)
-    
-    val envelope = s"ST_MakeEnvelope(${bbox}, 3006)";
-    var insert = s"insert into t_vv select gid from lantmateriet.ak_riks left join t_vv on gid = id where geom @ ${envelope} and id is null";
-    var select = s"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from (select gid, geom from lantmateriet.ak_riks left join t_vv on id = gid where geom @ ${envelope} and id is null) as q";
-    //var select = s"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from lantmateriet.ak_riks where geom @ ${envelope}";
-
-    var result: Array[Byte] = null
-    
-    var connection: java.sql.Connection = null
-    var statement: java.sql.Statement = null
-    var resultSet: java.sql.ResultSet = null
- 
-    try {
-      connection = ds.getConnection
-      statement = connection.createStatement()
-      resultSet = statement.executeQuery(select)
-      resultSet.next
-      result = resultSet.getBytes(1)
-    } finally {
-      if (resultSet != null) resultSet.close()
-      statement.close()
-      connection.close()
-    }
-    
-    try {
-      connection = ds.getConnection
-      statement = connection.createStatement()
-      statement.executeUpdate(insert)
-      result
-    } finally {
-      statement.close()
-      connection.close()
-    }
+  def fetchTile(extent: Extent) : Option[Array[Byte]] = DB.autoCommit { implicit session =>
+    logger.debug(s"Fetching tile for " + extent)
+    val envelope = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
+    val bytes = sql"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from (select gid, geom from lantmateriet.ak_riks left join t_vv on id = gid where geom @ ${envelope} and id is null) as q".map(rs => rs.bytes(1)).single.apply()
+    sql"insert into t_vv select gid from lantmateriet.ak_riks left join t_vv on gid = id where geom @ ${envelope} and id is null".update.apply()
+    bytes
   }
   
   makeTiles(4)

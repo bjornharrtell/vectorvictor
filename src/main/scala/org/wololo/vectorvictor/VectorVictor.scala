@@ -35,7 +35,7 @@ case class Grid(extent: Extent) extends LazyLogging {
   def tileExtent(x:Int, y:Int, level: Int) : Extent = {
     val w = tileSize * resolution(level)
     val minx = bounds.minx + w * x
-    val miny = extent.miny + w * y
+    val miny = bounds.miny + w * y
     Extent(minx, miny, minx + w, miny + w)
   }
 }
@@ -58,13 +58,13 @@ object VectorVictor extends App with LazyLogging {
     connection.close()
   }
   
-  val extent = Extent(218128, 6126002, 1083427, 7692850)
+  val extent = Extent(200000, 6000000, 1000000, 7800000)
   
   val grid = Grid(extent)
   
   var resolutions = List[Int]()
   var zs = List[Int]()
-  var z = 2 
+  var z = 2
   
   def makeTiles(level: Int) = {
     logger.info("Making tiles for level " + level)
@@ -113,6 +113,7 @@ object VectorVictor extends App with LazyLogging {
   makeTiles(2)
   makeTiles(0)
   
+  // TODO: Output array representing "bitmap" of generated tiles
   logger.info("Origin: " + grid.bounds.minx + ", " + grid.bounds.miny)
   logger.info("Resolutions: " + resolutions.reverse.toString)
 }

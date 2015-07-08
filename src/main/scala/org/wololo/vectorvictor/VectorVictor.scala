@@ -57,8 +57,8 @@ object VectorVictor extends App with LazyLogging {
   
   var resolutions = List[Int]()
   var zs = List[Int]()
-  var z = 2
-  var bitmaps = List[List[Int]]()
+  var z = 4
+  //var bitmaps = List[List[Int]]()
     
   def makeTiles(level: Int) = {
     logger.info("Making tiles for level " + level)
@@ -66,7 +66,7 @@ object VectorVictor extends App with LazyLogging {
     var bitmap = List[Int]()
     
     resolutions = resolutions :+ grid.resolution(level)
-    zs = zs :+ z
+    //zs = zs :+ z
     
     var c = 0;
     val r = grid.range(level)
@@ -85,7 +85,7 @@ object VectorVictor extends App with LazyLogging {
     
     parFuncs.foreach(f => f())
     
-    bitmaps = bitmaps :+ bitmap
+    //bitmaps = bitmaps :+ bitmap
     
     z -= 1
     
@@ -103,12 +103,14 @@ object VectorVictor extends App with LazyLogging {
   def fetchTile(extent: Extent) : Option[Array[Byte]] = DB.autoCommit { implicit session =>
     logger.debug(s"Fetching tile for " + extent)
     val envelope = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
-    val select = sqls"select gid, geom from lantmateriet.ak_riks left join t_vv on id = gid where geom @ ${envelope} and id is null"
+    val select = sqls"select gid, geom from lantmateriet.my_riks left join t_vv on id = gid where geom @ ${envelope} and id is null"
     val bytes = sql"select ST_AsTWKB(array_agg(geom), array_agg(gid)) as geom from (${select}) as q".map(rs => rs.bytes(1)).single.apply()
     sql"insert into t_vv select gid from (${select}) as q".update.apply()
     bytes
   }
   
+  makeTiles(8)
+  makeTiles(6)
   makeTiles(4)
   makeTiles(2)
   makeTiles(0)

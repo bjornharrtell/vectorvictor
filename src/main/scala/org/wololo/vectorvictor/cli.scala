@@ -17,7 +17,7 @@ object cli extends App with LazyLogging {
   val grid = Grid(extent)
   
   makeTileCache("lantmateriet.al_riks", 4)
-  makeTileCache("osm.land2", 6)
+  makeTileCache("osm.land3", 6)
   
   def makeTileCache(table: String, maxZoom: Int) {
     // TODO: instead of assuming t_vv create unlogged table and drop on exit

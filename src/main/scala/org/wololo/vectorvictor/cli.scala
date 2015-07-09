@@ -8,15 +8,15 @@ import js._
 import tileops._
 
 object cli extends App with LazyLogging {
-  var ds: HikariDataSource = null
+  //var ds: HikariDataSource = null
   try {
     val config = new HikariConfig("hikari.properties")
-    ds = new HikariDataSource(config)
+    val ds = new HikariDataSource(config)
   
     ConnectionPool.singleton(new DataSourceConnectionPool(ds))
   
     // TODO: instead of assuming t_vv create unlogged table and drop on exit
-    DB.autoCommit { implicit session => sql"truncate t_vv".update.apply() }
+    DB localTx { implicit session => sql"truncate t_vv".update.apply() }
   
     val extent = Extent(200000, 6000000, 1000000, 7800000)
     val grid = Grid(extent)
@@ -42,7 +42,7 @@ object cli extends App with LazyLogging {
     }
     
   } finally {
-    if (ds != null) ds.close()
+    //if (ds != null) ds.close()
     ConnectionPool.closeAll()
   }
   

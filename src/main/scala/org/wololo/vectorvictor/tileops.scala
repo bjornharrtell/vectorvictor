@@ -42,7 +42,7 @@ object tileops extends LazyLogging {
     fos.close
   }
 
-  def fetchTile(table: String, extent: Extent): Option[Array[Byte]] = DB.autoCommit { implicit session =>
+  def fetchTile(table: String, extent: Extent): Option[Array[Byte]] = DB localTx { implicit session =>
     logger.debug(s"Fetching tile for " + extent)
     val envelope = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
     val select = sqls"select gid, geom from ${SQLSyntax.createUnsafely(table)} left join t_vv on id = gid where geom @ ${envelope} and id is null"

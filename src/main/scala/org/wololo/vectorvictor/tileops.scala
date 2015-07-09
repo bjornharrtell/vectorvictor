@@ -48,6 +48,7 @@ object tileops extends LazyLogging {
     val select = sqls"select gid, geom from ${SQLSyntax.createUnsafely(table)} left join t_vv on id = gid where geom @ ${envelope} and id is null"
     val bytes = sql"select ST_AsTWKB(array_agg(geom), array_agg(gid), -2) as geom from (${select}) as q".map(rs => rs.bytes(1)).single.apply()
     sql"insert into t_vv select gid from (${select}) as q".update.apply()
+    session.close()
     bytes
   }
 }

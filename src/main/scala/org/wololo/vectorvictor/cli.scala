@@ -16,7 +16,7 @@ object cli extends App with LazyLogging {
     ConnectionPool.singleton(new DataSourceConnectionPool(ds))
   
     // TODO: instead of assuming t_vv create unlogged table and drop on exit
-    DB.autoCommit { implicit session => sql"truncate t_vv".update.apply(); session.close() }
+    DB.autoCommit { implicit session => sql"truncate t_vv".update.apply() }
   
     val extent = Extent(200000, 6000000, 1000000, 7800000)
     val grid = Grid(extent)
@@ -43,6 +43,7 @@ object cli extends App with LazyLogging {
     
   } finally {
     if (ds != null) ds.close()
+    ConnectionPool.closeAll()
   }
   
 }

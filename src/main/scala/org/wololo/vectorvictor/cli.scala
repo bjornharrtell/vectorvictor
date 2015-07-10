@@ -24,9 +24,10 @@ object cli extends App with LazyLogging {
     createTempTable()
     
     val sourceDefs = List(
-      ("lantmateriet.al_riks", 4, 0, 2048),
-      ("osm.land_polygons_z5_3006", 2, 128, 0),
-      ("osm.land_polygons_z8_3006", 4, 128, 0)
+      ("lantmateriet.al_riks", 4, 0, 128),
+      ("osm.land_polygons_z5_3006", 2, 1024, 0),
+      ("osm.land_polygons_z8_3006", 4, 128, 1024),
+      ("osm.land_polygons_3006", 8, 0, 128)
     )
     
     val metas = sourceDefs.map(sourceDef => (makeTileCache _).tupled(sourceDef))
@@ -61,7 +62,8 @@ object cli extends App with LazyLogging {
       table,
       resolutions.toArray,
       if (minResolution != 0) minResolution else resolutions.head,
-      if (maxResolution != 0) maxResolution else resolutions.last,
+      maxResolution,
+      //if (maxResolution != 0) maxResolution else resolutions.last,
       storedTiles.map(tiles => tiles.toArray).toArray
     )
   }

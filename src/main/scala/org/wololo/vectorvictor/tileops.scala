@@ -5,8 +5,20 @@ import scala.collection.parallel._
 import scalikejdbc._
 import com.typesafe.scalalogging.LazyLogging
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 object tileops extends LazyLogging {
+  val tempTable = SQLSyntax.createUnsafely("t_vv_" + Random.alphanumeric.take(8).mkString)
+  
+  def createTempTable() =
+    DB localTx { implicit session => sql"CREATE UNLOGGED TABLE ${tempTable} (id serial PRIMARY KEY)".update.apply()  }
+  
+  def clearTempTable() =
+    DB localTx { implicit session => sql"TRUNCATE ${tempTable}".update.apply() }
+  
+  def dropTempTable() =
+    DB localTx { implicit session => sql"DROP TABLE ${tempTable}".update.apply() }
+  
   def makeTiles(table: String, grid: Grid, zoom: Int): ArrayBuffer[Int] = {
     logger.debug("Making tiles for level " + zoom)
 
@@ -45,9 +57,9 @@ object tileops extends LazyLogging {
   def fetchTile(table: String, extent: Extent): Option[Array[Byte]] = DB localTx { implicit session =>
     logger.debug(s"Fetching tile for " + extent)
     val envelope = sqls"ST_MakeEnvelope(${extent.minx}, ${extent.miny}, ${extent.maxx}, ${extent.maxy}, 3006)"
-    val select = sqls"select gid, geom from ${SQLSyntax.createUnsafely(table)} left join t_vv on id = gid where geom @ ${envelope} and id is null"
+    val select = sqls"select gid, geom from ${SQLSyntax.createUnsafely(table)} left join ${tempTable} on id = gid where geom @ ${envelope} and id is null"
     val bytes = sql"select ST_AsTWKB(array_agg(geom), array_agg(gid), -2) as geom from (${select}) as q".map(rs => rs.bytes(1)).single.apply()
-    sql"insert into t_vv select gid from (${select}) as q".update.apply()
+    sql"insert into ${tempTable} select gid from (${select}) as q".update.apply()
     bytes
   }
 }

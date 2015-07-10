@@ -6,7 +6,6 @@ import scalikejdbc._
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
-import js._
 import tileops._
 
 object cli extends App with LazyLogging {
@@ -15,7 +14,7 @@ object cli extends App with LazyLogging {
 
   ConnectionPool.singleton(new DataSourceConnectionPool(ds))
 
-  val extent = Extent(-130000, 5800000, 1650000, 800000)
+  val extent = Extent(-350000, 5600000, 1870000, 7980000)
   //val extent = Extent(200000, 6000000, 1000000, 7800000)
   val grid = Grid(extent)
   
@@ -26,8 +25,8 @@ object cli extends App with LazyLogging {
     
     val sourceDefs = List(
       ("lantmateriet.al_riks", 4, 0, 2048),
-      //("osm.land3", 6),
-      ("osm.land_polygons_z8_subset_3006", 0, 128, 0)
+      ("osm.land_polygons_z5_3006", 2, 128, 0),
+      ("osm.land_polygons_z8_3006", 4, 128, 0)
     )
     
     val metas = sourceDefs.map(sourceDef => (makeTileCache _).tupled(sourceDef))

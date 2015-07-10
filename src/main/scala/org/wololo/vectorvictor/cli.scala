@@ -3,6 +3,8 @@ package org.wololo.vectorvictor
 import com.typesafe.scalalogging.LazyLogging
 import com.zaxxer.hikari._
 import scalikejdbc._
+import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 import js._
 import tileops._
@@ -13,13 +15,31 @@ object cli extends App with LazyLogging {
 
   ConnectionPool.singleton(new DataSourceConnectionPool(ds))
 
-  val extent = Extent(200000, 6000000, 1000000, 7800000)
+  val extent = Extent(-130000, 5800000, 1650000, 800000)
+  //val extent = Extent(200000, 6000000, 1000000, 7800000)
   val grid = Grid(extent)
+
+  makeTileCaches()
   
-  makeTileCache("lantmateriet.al_riks", 4)
-  makeTileCache("osm.land3", 6)
+  def makeTileCaches() {
+    val sourceDefs = List(
+      ("lantmateriet.al_riks", 4),
+      //("osm.land3", 6),
+      ("osm.land_polygons_z8_subset_3006", 0)
+    )
+    
+    val metas = sourceDefs.map(sourceDef => makeTileCache(sourceDef._1, sourceDef._2))
+    logger.info(toJSON(metas))
+  }
   
-  def makeTileCache(table: String, maxZoom: Int) {
+  def toJSON(value: Any) : String = {
+    val mapper = new ObjectMapper()
+    mapper.registerModule(DefaultScalaModule)
+    mapper.enable(SerializationFeature.INDENT_OUTPUT)
+    mapper.writeValueAsString(value)
+  }
+  
+  def makeTileCache(table: String, maxZoom: Int) : Meta = {
     // TODO: instead of assuming t_vv create unlogged table and drop on exit
     DB localTx { implicit session => sql"truncate t_vv".update.apply() }
     
@@ -34,7 +54,8 @@ object cli extends App with LazyLogging {
     
     logger.info("Tiles created: " + storedTiles.map(a => a.size).sum)
     
-    // TODO: output JS stuff
-    // toJS(storedTiles)
+    Meta(
+      table, resolutions.toArray, resolutions.head, resolutions.last, storedTiles.map(tiles => tiles.toArray).toArray
+    )
   }
 }

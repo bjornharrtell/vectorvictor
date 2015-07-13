@@ -20,15 +20,16 @@ object cli extends App with LazyLogging {
   
   makeTileCaches()
   
+  //ConnectionPool.closeAll()
   ds.close()
   
   def makeTileCaches() {
     createTempTable()
     
     val sourceDefs = List(
-      ("lantmateriet.al_riks", 4, 0, 128),
-      ("osm.land_polygons_z5_3006", 2, 1024, 0),
-      ("osm.land_polygons_z8_3006", 4, 128, 1024)
+      //("lantmateriet.al_riks", 4, 0, 128),
+      ("osm.land_polygons_z5_3006", 2, 1024, 0)
+      //("osm.land_polygons_z8_3006", 4, 128, 1024)
       //("osm.land_polygons_3006", 8, 0, 128)
     )
     

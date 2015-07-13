@@ -28,7 +28,7 @@ object tileops extends LazyLogging {
     var c = 0
     val r = grid.range(zoom)
     val funcs = for (x <- r; y <- r) yield () => {
-      val bytes = Option.empty[Array[Byte]] //fetchTile(table, grid.tileExtent(x, y, zoom))
+      val bytes = fetchTile(table, grid.tileExtent(x, y, zoom))
       if (!bytes.isEmpty) {
         storeTile(table, bytes.get, zoom, x, y)
         storedTiles += y * r.length + x
@@ -38,9 +38,9 @@ object tileops extends LazyLogging {
 
     // parallelize execution to use a pool of 20 threads
     val parFuncs = funcs.par
-    parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
+    //parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
     parFuncs.foreach(f => f())
-
+    
     logger.debug("Tiles stored: " + c)
 
     storedTiles

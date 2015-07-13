@@ -37,9 +37,9 @@ object tileops extends LazyLogging {
     }
 
     // parallelize execution to use a pool of 20 threads
-    val parFuncs = funcs.par
+    //val parFuncs = funcs.par
     //parFuncs.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(20))
-    parFuncs.foreach(f => f())
+    funcs.foreach(f => f())
     
     logger.debug("Tiles stored: " + c)
 

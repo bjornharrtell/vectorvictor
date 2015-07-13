@@ -31,17 +31,10 @@
 			<artifactId>HikariCP</artifactId>
 			<version>2.3.9</version>
 		</dependency>
-		<!--
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>9.3-1102-jdbc3</version>
-		</dependency>
-		-->
-		<dependency>
-		    <groupId>com.impossibl.pgjdbc-ng</groupId>
-		    <artifactId>pgjdbc-ng</artifactId>
-		    <version>0.5</version>
+			<version>9.4-1201-jdbc41</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scalikejdbc</groupId>
@@ -49,9 +42,9 @@
 			<version>2.2.7</version>
 		</dependency>
 		<dependency>
-		    <groupId>com.fasterxml.jackson.module</groupId>
-		    <artifactId>jackson-module-scala_2.11</artifactId>
-		    <version>2.5.2</version>
+			<groupId>com.fasterxml.jackson.module</groupId>
+			<artifactId>jackson-module-scala_2.11</artifactId>
+			<version>2.5.2</version>
 		</dependency>
 	</dependencies>
 
@@ -91,6 +84,20 @@
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.2.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
 				</configuration>
 			</plugin>
 		</plugins>

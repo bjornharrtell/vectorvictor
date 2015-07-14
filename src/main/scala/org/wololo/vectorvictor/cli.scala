@@ -28,10 +28,11 @@ object cli extends App with LazyLogging {
     createTempTable()
     
     val sourceMetas = List(
-      SourceMeta("osm.land_polygons_z5_3006", grid1, 2, Some(1024), None)
-      //SourceMeta("osm.land_polygons_z8_3006", grid1, 4, Some(128), Some(1024)),
-      //SourceMeta("osm.land_polygons_3006", grid2, 8, None, Some(128)),
-      //SourceMeta("lantmateriet.al_riks", grid2, 4, None, Some(256))
+      SourceMeta("osm.land_polygons_z5_3006", grid1, 2, Some(1024), None),
+      SourceMeta("osm.land_polygons_z8_3006", grid1, 4, Some(128), Some(1024)),
+      SourceMeta("osm.land_polygons_3006", grid2, 8, None, Some(128)),
+      SourceMeta("lantmateriet.al_riks", grid2, 6, None, Some(256)),
+      SourceMeta("lantmateriet.vl_riks", grid2, 7, None, Some(256))
     )
     
     val cacheMetas = sourceMetas.map(sourceMeta => makeTileCache(sourceMeta))

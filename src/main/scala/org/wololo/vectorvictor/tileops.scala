@@ -47,7 +47,7 @@ object tileops extends LazyLogging {
   }
 
   def storeTile(name: String, tile: Array[Byte], zoom: Int, x: Int, y: Int) = {
-    val path = s"output/${name}/${zoom}/${y}/"
+    val path = s"${cli.outputpath}/${name}/${zoom}/${y}/"
     new File(path).mkdirs()
     val fos = new FileOutputStream(path + x)
     fos.write(tile, 0, tile.length)

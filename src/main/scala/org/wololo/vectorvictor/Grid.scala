@@ -15,6 +15,7 @@ case class Grid(extent: Extent) extends LazyLogging {
   
   logger.info("TileGrid total bounds " + bounds)
   
+  def origin = (bounds.minx, bounds.miny)
   def resolution(level: Int) = (maxResolution / math.pow(2, level)).toInt
   def range(level: Int) = 0 to math.pow(2, level).toInt - 1
   

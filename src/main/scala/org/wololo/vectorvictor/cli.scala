@@ -14,30 +14,28 @@ object cli extends App with LazyLogging {
 
   ConnectionPool.singleton(new DataSourceConnectionPool(ds))
 
-  val extent = Extent(-350000, 5600000, 1870000, 7980000)
-  //val extent = Extent(200000, 6000000, 1000000, 7800000)
-  val grid = Grid(extent)
-  
   makeTileCaches()
   
-  //ConnectionPool.closeAll()
   ds.close()
   
   def makeTileCaches() {
+    val grid1 = Grid(Extent(-350000, 5600000, 1870000, 7980000))
+    val grid2 = Grid(Extent(200000, 6000000, 1000000, 7800000))
+    
     createTempTable()
     
-    val sourceDefs = List(
-      ("lantmateriet.al_riks", 4, 0, 128),
-      ("osm.land_polygons_z5_3006", 2, 1024, 0),
-      ("osm.land_polygons_z8_3006", 4, 128, 1024),
-      ("osm.land_polygons_3006", 8, 0, 128)
+    val sourceMetas = List(
+      SourceMeta("osm.land_polygons_z5_3006", grid1, 2, Some(1024), None),
+      SourceMeta("osm.land_polygons_z8_3006", grid1, 4, Some(128), Some(1024)),
+      SourceMeta("osm.land_polygons_3006", grid2, 8, None, Some(128)),
+      SourceMeta("lantmateriet.al_riks", grid2, 4, None, Some(256))
     )
     
-    val metas = sourceDefs.map(sourceDef => (makeTileCache _).tupled(sourceDef))
+    val cacheMetas = sourceMetas.map(sourceMeta => makeTileCache(sourceMeta))
     
     dropTempTable()
     
-    logger.info(toJSON(metas))
+    logger.info(toJSON(cacheMetas))
   }
   
   def toJSON(value: Any) : String = {
@@ -47,26 +45,26 @@ object cli extends App with LazyLogging {
     mapper.writeValueAsString(value)
   }
   
-  def makeTileCache(table: String, maxZoom: Int, minResolution: Int, maxResolution: Int) : Meta = {
+  def makeTileCache(sourceMeta: SourceMeta) : CacheMeta = {
     clearTempTable
     
-    val zoomLevels = 0 to maxZoom
-    val resolutions = zoomLevels.map(zoom => grid.resolution(zoom))
+    val zoomLevels = 0 to sourceMeta.maxZoom
+    val resolutions = zoomLevels.map(zoom => sourceMeta.grid.resolution(zoom))
     
-    logger.info(s"Making tilecache from ${table} from maxZoom ${maxZoom}")
-    logger.info("Origin: " + grid.bounds.minx + ", " + grid.bounds.miny)
-    logger.info("Resolutions: " + resolutions)
+    logger.info(s"Making tilecache from ${sourceMeta.name} from maxZoom ${sourceMeta.maxZoom}")
+    //logger.info("Origin: " + sourceMeta.grid.bounds.minx + ", " + sourceMeta.grid.bounds.miny)
+    //logger.info("Resolutions: " + resolutions)
     
-    val storedTiles = zoomLevels.reverse.map(zoom => makeTiles(table, grid, zoom))
+    val storedTiles = zoomLevels.reverse.map(zoom => makeTiles(sourceMeta.name, sourceMeta.grid, zoom))
     
     logger.info("Tiles created: " + storedTiles.map(a => a.size).sum)
 
-    Meta(
-      table,
+    CacheMeta(
+      sourceMeta.name,
+      sourceMeta.grid.origin,
       resolutions.toArray,
-      if (minResolution != 0) minResolution else resolutions.head,
-      maxResolution,
-      //if (maxResolution != 0) maxResolution else resolutions.last,
+      sourceMeta.minResolution,
+      sourceMeta.maxResolution,
       storedTiles.map(tiles => tiles.toArray).toArray
     )
   }
